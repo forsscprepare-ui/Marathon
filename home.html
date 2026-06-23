@@ -7,37 +7,16 @@
 <style>
     /* UI Styles */
     *{ margin:0; padding:0; box-sizing:border-box; font-family:Arial,sans-serif; -webkit-tap-highlight-color: transparent; }
-    body{ background:#f3f1fb; color:#1e293b; padding:15px; min-height:100vh; }
+    body{ background:#0f172a; color:white; padding:15px; min-height:100vh; }
     .header{ text-align:center; margin-bottom:25px; }
     .header h1{ font-size:30px; background:linear-gradient(90deg,#60a5fa,#8b5cf6); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
     .folder-grid{ display:grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; }
-    .folder-card{
-    background:#ffffff;
-    border:1px solid #d8d3eb;
-    border-radius:14px;
-    padding:20px;
-    text-align:center;
-    cursor:pointer;
-    transition:0.2s;
-    color:#1e293b;
-    box-shadow:0 2px 8px rgba(0,0,0,0.05);
-} text-align:center; cursor:pointer; transition: 0.2s; }
-    .folder-card:active {
-    transform:scale(0.97);
-    background:#ebe7f8;
-}
-    .folder-overlay { position: fixed; inset: 0; background: #f3f1fb; z-index: 1000; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s; }
+    .folder-card{ background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:20px; text-align:center; cursor:pointer; transition: 0.2s; }
+    .folder-card:active { transform: scale(0.97); background:rgba(255,255,255,0.1); }
+    .folder-overlay { position: fixed; inset: 0; background: #0f172a; z-index: 1000; display: flex; flex-direction: column; transform: translateY(100%); transition: transform 0.3s; }
     .folder-overlay.open { transform: translateY(0); }
-    .file-item{
-    padding:16px 20px;
-    border-bottom:1px solid #d8d3eb;
-    cursor:pointer;
-    color:#1e293b;
-}
-    .loader-overlay{
-    background:#f3f1fb;
-    color:#1e293b;
-}
+    .file-item{ padding: 16px 20px; border-bottom:1px solid rgba(255,255,255,0.05); cursor:pointer; }
+    .loader-overlay{ position:fixed; inset:0; background:#0f172a; display:flex; align-items:center; justify-content:center; z-index:99999; }
     .loader-overlay.hide{ opacity:0; pointer-events:none; }
 </style>
 </head>
@@ -47,7 +26,7 @@
 <div class="folder-grid" id="folderGrid"></div>
 
 <div class="folder-overlay" id="folderOverlay">
-    <div style="padding:18px; border-bottom:1px solid #d8d3eb;"><button onclick="closeFolder()">← Back</button></div>
+    <div style="padding:18px; border-bottom:1px solid #334155;"><button onclick="closeFolder()">← Back</button></div>
     <div id="overlayContent"></div>
 </div>
 
