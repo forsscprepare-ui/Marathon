@@ -1,280 +1,137 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Last Attempt - Quiz Engine</title>
+<title>Marathon Files</title>
 
 <style>
 *{
     margin:0;
     padding:0;
-    
+    box-sizing:border-box;
     font-family:Arial,sans-serif;
 }
 
 body{
+    background:#0f172a;
+    color:white;
     min-height:100vh;
-    display:flex;
-    justify-content:center;
-    align-items:center;
-    background:#f3f1fb;
-    color:#f3f1fb;
     padding:20px;
-    overflow:hidden;
 }
 
-body::before{
-    content:"";
-    position:fixed;
-    inset:0;
-    background:
-        #f3f1fb;
-    pointer-events:none;
-}
-
-.main-card{
-    width:100%;
-    max-width:500px;
-    background:#f3f1fb;
-    backdrop-filter:blur(16px);
-
-    padding:35px 25px;
+h1{
     text-align:center;
-   
-    position:relative;
-    z-index:1;
-}
-
-.logo{
-    font-size:42px;
-    font-weight:800;
-    margin-bottom:10px;
-    background:linear-gradient(90deg,#60a5fa,#8b5cf6);
-    -webkit-background-clip:text;
-    -webkit-text-fill-color:transparent;
-}
-
-.subtitle{
-    opacity:0.85;
-    margin-bottom:30px;
-    line-height:1.6;
-}
-
-#statusText{
-    font-color:black;
-    font-size:18px;
-    font-weight:700;
     margin-bottom:25px;
 }
 
-button{
-    width:100%;
-    border:none;
-    border-radius:14px;
-    padding:16px;
-    font-size:16px;
-    font-weight:700;
+#fileList{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(250px,1fr));
+    gap:15px;
+}
+
+.file-card{
+    background:#1e293b;
+    padding:18px;
+    border-radius:12px;
     cursor:pointer;
-    transition:0.25s;
+    transition:.3s;
+    border:1px solid #334155;
 }
 
-button:hover{
-    transform:translateY(-2px);
+.file-card:hover{
+    transform:translateY(-3px);
+    background:#334155;
 }
 
-button:active{
-    transform:scale(0.98);
-}
-
-#btnDownload{
-    background:linear-gradient(135deg,#2563eb,#7c3aed);
-    color:white;
-    box-shadow:0 10px 30px rgba(37,99,235,.35);
-}
-
-#btnProceed{
-    background:linear-gradient(135deg,#16a34a,#22c55e);
-    color:white;
-    box-shadow:0 10px 30px rgba(34,197,94,.35);
-}
-
-.hidden{
-    display:none;
-}
-
-#progressContainer{
-    margin-top:10px;
-}
-
-.progress-track{
-    width:100%;
-    height:16px;
-    background:rgba(255,255,255,0.12);
-    border-radius:50px;
-    overflow:hidden;
-}
-
-#progressBar{
-    width:0%;
-    height:100%;
-    background:linear-gradient(90deg,#60a5fa,#8b5cf6);
-    border-radius:50px;
-    transition:width 0.2s;
-}
-
-#progressText{
-    display:block;
-    margin-top:12px;
+.file-name{
     font-size:18px;
     font-weight:bold;
+    word-break:break-word;
 }
 
-.info-box{
-    margin-top:25px;
-    padding:15px;
-    border-radius:12px;
-    background:rgba(255,255,255,0.06);
-    font-size:14px;
-    opacity:0.9;
-    line-height:1.5;
+.loading{
+    text-align:center;
+    font-size:18px;
 }
 
-@media(max-width:600px){
-
-    .main-card{
-        padding:30px 20px;
-    }
-
-    .logo{
-        font-size:34px;
-    }
-
-    #statusText{
-        font-size:16px;
-    }
-
-    button{
-        font-size:15px;
-        padding:15px;
-    }
+.error{
+    text-align:center;
+    color:#ff6b6b;
 }
 </style>
 </head>
-
 <body>
 
-<div class="main-card">
+<h1>Marathon Repository Files</h1>
 
-    <div class="logo">Marathon</div>
-
-    
-
-    <div id="statusText">Checking...</div>
-
-    <div id="downloadArea" class="hidden">
-        <button id="btnDownload">
-            Join
-        </button>
-    </div>
-
-    <div id="proceedArea" class="hidden">
-        <button id="btnProceed">
-           Start Marathon
-        </button>
-    </div>
-
-    <div id="progressContainer" class="hidden">
-        <div class="progress-track">
-            <div id="progressBar"></div>
-        </div>
-        <span id="progressText">0%</span>
-    </div>
-
-    
-
-</div>
+<div id="status" class="loading">Loading files...</div>
+<div id="fileList"></div>
 
 <script>
-const statusText = document.getElementById('statusText');
-const downloadArea = document.getElementById('downloadArea');
-const proceedArea = document.getElementById('proceedArea');
-const progressContainer = document.getElementById('progressContainer');
-const progressBar = document.getElementById('progressBar');
-const progressText = document.getElementById('progressText');
+const USERNAME = "forsscprepare-ui";
+const REPO = "Marathon";
 
-// Check if data is already in LocalStorage/Cache
-const isReady = localStorage.getItem('quizDataReady');
+const apiUrl =
+`https://api.github.com/repos/${USERNAME}/${REPO}/contents`;
 
-if (isReady === 'true') {
-    statusText.innerText = "Connected Successfully !!";
-    proceedArea.classList.remove('hidden');
-} else {
-    statusText.innerText = "Enter Into Marathon Room";
-    downloadArea.classList.remove('hidden');
-}
+async function loadFiles() {
 
-// Handle Download
-document.getElementById('btnDownload').onclick = async () => {
-    downloadArea.classList.add('hidden');
-    progressContainer.classList.remove('hidden');
-    statusText.innerText = "Downloading...";
+    try {
 
-    const response = await fetch('quiz.html');
-    const reader = response.body.getReader();
-  const contentLength = parseInt(response.headers.get('Content-Length')) || 0;
+        const response = await fetch(apiUrl);
 
-    let receivedLength = 0;
-    let chunks = [];
+        if(!response.ok){
+            throw new Error("GitHub API Error");
+        }
 
-    while(true) {
-        const {done, value} = await reader.read();
+        const files = await response.json();
 
-        if (done) break;
+        const htmlFiles = files.filter(file =>
+            file.type === "file" &&
+            file.name.endsWith(".html") &&
+            file.name.toLowerCase() !== "index.html"
+        );
 
-        chunks.push(value);
-        receivedLength += value.length;
+        document.getElementById("status").style.display = "none";
 
-       if (contentLength > 0) {
-    let percent = Math.min(
-        Math.round((receivedLength / contentLength) * 100),
-        100
-    );
+        const container = document.getElementById("fileList");
 
-    progressBar.style.width = percent + "%";
-    progressText.innerText = percent + "%";
-}
+        if(htmlFiles.length === 0){
+            container.innerHTML =
+                "<p>No HTML files found.</p>";
+            return;
+        }
+
+        htmlFiles.forEach(file => {
+
+            const card = document.createElement("div");
+            card.className = "file-card";
+
+            card.innerHTML =
+            `<div class="file-name">${file.name}</div>`;
+
+            card.onclick = () => {
+
+                const pageUrl =
+                `https://${USERNAME}.github.io/${REPO}/${file.name}`;
+
+                window.open(pageUrl, "_blank");
+            };
+
+            container.appendChild(card);
+        });
+
+    } catch(err) {
+
+        document.getElementById("status").className = "error";
+        document.getElementById("status").textContent =
+        "Failed to load repository files.";
     }
-progressBar.style.width = "100%";
-progressText.innerText = "100%";
-    localStorage.setItem('quizDataReady', 'true');
-
-    statusText.innerText = "Connected Successfully !!!";
-    proceedArea.classList.remove('hidden');
-};
-
-// Handle Proceed
-document.getElementById('btnProceed').onclick = () => {
-    window.location.href = "home.html";
-};
-
-if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./sw.js')
-        .then(() => console.log("Service Worker Registered"))
-        .catch(err => console.error(err));
 }
 
-
-
-
-
-
-
-
-
-
-
-    
+loadFiles();
 </script>
 
 </body>
