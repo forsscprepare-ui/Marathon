@@ -1,0 +1,561 @@
+
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Marathon Test</title>
+<style>
+:root {
+    --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; 
+    --green: #238636; --red: #da3633; --blue: #1f6feb; --yellow: #d29922;
+}
+* { margin: 0; padding: 0; box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; }
+body { background: var(--bg); color: var(--text); min-height: 100vh; }
+.container { max-width: 800px; margin: 0 auto; padding: 16px; }
+.card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; margin: 16px 0; }
+h1, h2, h3 { color: #58a6ff; margin-bottom: 16px; }
+button { 
+    background: var(--blue); color: white; border: none; padding: 12px 20px; 
+    border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; margin: 8px 0;
+}
+button:hover { opacity: 0.9; }
+button:disabled { background: #484f58; cursor: not-allowed; }
+.btn-secondary { background: #21262d; border: 1px solid var(--border); }
+.btn-success { background: var(--green); }
+.btn-danger { background: var(--red); }
+select, input { 
+    width: 100%; padding: 12px; background: var(--bg); border: 1px solid var(--border); 
+    border-radius: 8px; color: var(--text); font-size: 16px; margin: 8px 0;
+}
+.hidden { display: none!important; }
+.flex { display: flex; gap: 12px; }
+.flex > * { flex: 1; }
+.stats { display: flex; justify-content: space-between; margin: 16px 0; font-weight: 600; }
+.stats span { padding: 8px 12px; border-radius: 6px; }
+.stats.correct { background: rgba(35,134,54,0.2); color: #3fb950; }
+.stats.wrong { background: rgba(218,54,51,0.2); color: #f85149; }
+.stats.skip { background: rgba(210,153,34,0.2); color: #d29922; }
+.option { 
+    padding: 14px; border: 1px solid var(--border); border-radius: 8px; 
+    margin: 8px 0; cursor: pointer; transition: 0.2s;
+}
+.option:hover { border-color: var(--blue); }
+.option.selected { border-color: var(--blue); background: rgba(31,111,235,0.1); }
+.option.correct { border-color: var(--green); background: rgba(35,134,54,0.2); }
+.option.wrong { border-color: var(--red); background: rgba(218,54,51,0.2); }
+.timer { 
+    width: 60px; height: 60px; border-radius: 50%; border: 4px solid var(--blue); 
+    display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px;
+    margin: 0 auto 16px;
+}
+.filter-tabs { display: flex; gap: 8px; margin: 16px 0; flex-wrap: wrap; }
+.filter-tabs button { width: auto; padding: 8px 16px; font-size: 14px; }
+.filter-tabs button.active { background: var(--blue); }
+.question-review { border: 1px solid var(--border); border-radius: 8px; padding: 16px; margin: 12px 0; }
+.modal { 
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); 
+    display: flex; align-items: center; justify-content: center; z-index: 1000;
+}
+.modal-content { background: var(--card); padding: 24px; border-radius: 12px; max-width: 400px; width: 90%; }
+#loader { text-align: center; padding: 40px; }
+.progress { width: 100%; height: 6px; background: var(--border); border-radius: 3px; overflow: hidden; }
+.progress-bar { height: 100%; background: var(--blue); width: 0%; transition: 0.3s; }
+@media (max-width: 600px) {.flex { flex-direction: column; }.stats { font-size: 14px; } }
+</style>
+</head>
+<body>
+<div class="container">
+    <!-- Loader -->
+    <div id="loader" class="card">
+        <h2 id="loaderText">Test downloading ---</h2>
+        <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+    </div>
+
+    <!-- Instruction Page -->
+    <div id="instructionPage" class="card hidden">
+        <h1>Marathon Test Instructions</h1>
+        <p>1. Each question has 30 seconds</p>
+        <p>2. +2 for correct, -0.5 for wrong, 0 for skip</p>
+        <p>3. You can navigate back/forward after answering</p>
+        <p>4. Your progress is auto-saved</p>
+        
+        <label>Select Language</label>
+        <select id="language">
+            <option value="">Choose Language</option>
+            <option value="en">English</option>
+            <option value="hi">Hindi</option>
+            <option value="both">English & Hindi</option>
+        </select>
+        
+        <label>Enter Your ID/Name</label>
+        <input type="text" id="userId" placeholder="Roll No or Name" />
+        
+        <div class="flex">
+            <button class="btn-secondary" onclick="goBack()">Back</button>
+            <button class="btn-success" onclick="startQuiz()">Start Test</button>
+        </div>
+    </div>
+
+    <!-- Quiz Page -->
+    <div id="quizPage" class="card hidden">
+        <div class="flex" style="align-items: center; margin-bottom: 16px;">
+            <button class="btn-secondary" style="width: auto;" onclick="backToInstructions()">← Back</button>
+            <div style="flex: 1; text-align: center;">
+                <strong>Question <span id="qNumber">1</span>/<span id="qTotal">10</span></strong>
+            </div>
+            <div class="timer" id="timer">30</div>
+        </div>
+
+        <div class="stats">
+            <span class="correct">Correct: <span id="correctCount">0</span></span>
+            <span class="wrong">Wrong: <span id="wrongCount">0</span></span>
+            <span class="skip">Skip: <span id="skipCount">0</span></span>
+        </div>
+
+        <div class="progress"><div class="progress-bar" id="quizProgress"></div></div>
+
+        <h3 id="questionText" style="margin: 20px 0;"></h3>
+        <div id="optionsContainer"></div>
+
+        <div class="flex hidden" id="navButtons">
+            <button class="btn-secondary" onclick="prevQuestion()">Previous</button>
+            <button class="btn-success" onclick="nextQuestion()">Next</button>
+        </div>
+    </div>
+
+    <!-- Score Page -->
+    <div id="scorePage" class="card hidden">
+        <h1>Test Completed!</h1>
+        <div class="stats" style="font-size: 18px; margin: 20px 0;">
+            <span class="correct">Score: <span id="finalScore">0</span></span>
+            <span>Rank: <span id="userRank">-</span> / <span id="totalUsers">-</span></span>
+            <span>Percentile: <span id="percentile">-</span>%</span>
+        </div>
+        <div class="stats">
+            <span class="correct">Correct: <span id="finalCorrect">0</span></span>
+            <span class="wrong">Wrong: <span id="finalWrong">0</span></span>
+            <span class="skip">Skipped: <span id="finalSkip">0</span></span>
+        </div>
+
+        <div class="filter-tabs">
+            <button class="active" onclick="filterQuestions('all')">All</button>
+            <button onclick="filterQuestions('correct')">Correct</button>
+            <button onclick="filterQuestions('wrong')">Wrong</button>
+            <button onclick="filterQuestions('skip')">Skip</button>
+        </div>
+
+        <div id="reviewContainer"></div>
+
+        <button class="btn-danger" onclick="showReattemptModal()">Reattempt Test</button>
+    </div>
+</div>
+
+<!-- Reattempt Modal -->
+<div id="reattemptModal" class="modal hidden">
+    <div class="modal-content">
+        <h3>Reattempt Test?</h3>
+        <p>If you reattempt, your previous score will be replaced.</p>
+        <div class="flex">
+            <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+            <button class="btn-danger" onclick="confirmReattempt()">Start</button>
+        </div>
+    </div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+const firebaseConfig = {
+    apiKey: "AIzaSyArzE_a1pQRmOT7JA4E3UWZqvbU1oKum6Q",
+    authDomain: "odinath.firebaseapp.com",
+    projectId: "odinath",
+    storageBucket: "odinath.firebasestorage.app",
+    messagingSenderId: "175960883632",
+    appId: "1:175960883632:web:90a2c98a02da2cc64f5675",
+    measurementId: "G-JHV5FGJWZN"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Sample Questions - Replace with your own
+const QUESTIONS = [
+    {
+        q_en: "What is the capital of India?",
+        q_hi: "भारत की राजधानी क्या है?",
+        options_en: ["Mumbai", "Delhi", "Kolkata", "Chennai"],
+        options_hi: ["मुंबई", "दिल्ली", "कोलकाता", "चेन्नई"],
+        answer: 1,
+        explanation: "New Delhi is the capital of India."
+    },
+    {
+        q_en: "2 + 2 × 2 =?",
+        q_hi: "2 + 2 × 2 =?",
+        options_en: ["6", "8", "4", "10"],
+        options_hi: ["6", "8", "4", "10"],
+        answer: 0,
+        explanation: "According to BODMAS: 2 + (2×2) = 6"
+    },
+    {
+        q_en: "Which planet is known as Red Planet?",
+        q_hi: "किस ग्रह को लाल ग्रह कहा जाता है?",
+        options_en: ["Venus", "Mars", "Jupiter", "Saturn"],
+        options_hi: ["शुक्र", "मंगल", "बृहस्पति", "शनि"],
+        answer: 1,
+        explanation: "Mars appears red due to iron oxide on surface."
+    }
+];
+
+let state = {
+    questions: [],
+    currentQ: 0,
+    answers: {},
+    lang: '',
+    userId: '',
+    timer: null,
+    timeLeft: 30,
+    startTime: null
+};
+
+// Loader Logic
+window.addEventListener('load', () => {
+    const saved = localStorage.getItem('quizApp');
+    if (saved) {
+        document.getElementById('loaderText').textContent = 'Test loaded from cache';
+        document.getElementById('progressBar').style.width = '100%';
+        setTimeout(() => {
+            const data = JSON.parse(saved);
+            if (data.completed) {
+                showScorePage(data);
+            } else {
+                showInstructionPage();
+            }
+        }, 500);
+    } else {
+        let progress = 0;
+        const interval = setInterval(() => {
+            progress += 20;
+            document.getElementById('progressBar').style.width = progress + '%';
+            if (progress >= 100) {
+                clearInterval(interval);
+                document.getElementById('loaderText').textContent = 'Test downloaded successfully';
+                setTimeout(() => {
+                    localStorage.setItem('quizApp', JSON.stringify({ downloaded: true }));
+                    showInstructionPage();
+                }, 500);
+            }
+        }, 200);
+    }
+});
+
+function showInstructionPage() {
+    document.getElementById('loader').classList.add('hidden');
+    document.getElementById('instructionPage').classList.remove('hidden');
+    const saved = JSON.parse(localStorage.getItem('quizApp') || '{}');
+    if (saved.userId) document.getElementById('userId').value = saved.userId;
+    if (saved.lang) document.getElementById('language').value = saved.lang;
+}
+
+window.startQuiz = () => {
+    const lang = document.getElementById('language').value;
+    const userId = document.getElementById('userId').value.trim();
+    
+    if (!lang) return alert('Please select language');
+    if (!userId) return alert('Please enter your ID/Name');
+    
+    state.lang = lang;
+    state.userId = userId;
+    state.questions = [...QUESTIONS].sort(() => Math.random() - 0.5);
+    state.currentQ = 0;
+    state.answers = {};
+    state.startTime = Date.now();
+    
+    document.title = userId; // Page title = ID for rank calculation
+    saveState();
+    
+    document.getElementById('instructionPage').classList.add('hidden');
+    document.getElementById('quizPage').classList.remove('hidden');
+    document.getElementById('qTotal').textContent = state.questions.length;
+    loadQuestion();
+}
+
+function loadQuestion() {
+    clearInterval(state.timer);
+    const q = state.questions[state.currentQ];
+    const qNum = state.currentQ + 1;
+    
+    document.getElementById('qNumber').textContent = qNum;
+    document.getElementById('quizProgress').style.width = (qNum / state.questions.length * 100) + '%';
+    
+    // Question text based on language
+    let qText = '';
+    if (state.lang === 'en') qText = q.q_en;
+    else if (state.lang === 'hi') qText = q.q_hi;
+    else qText = `${q.q_en}<br><br>${q.q_hi}`;
+    document.getElementById('questionText').innerHTML = qText;
+    
+    // Options
+    const container = document.getElementById('optionsContainer');
+    container.innerHTML = '';
+    const options = state.lang === 'hi'? q.options_hi : q.options_en;
+    
+    options.forEach((opt, idx) => {
+        const div = document.createElement('div');
+        div.className = 'option';
+        div.innerHTML = opt;
+        div.onclick = () => selectOption(idx);
+        
+        // Restore previous answer
+        if (state.answers[state.currentQ]!== undefined) {
+            const ans = state.answers[state.currentQ];
+            if (ans.selected === idx) div.classList.add('selected');
+            if (ans.checked) {
+                if (idx === q.answer) div.classList.add('correct');
+                else if (idx === ans.selected) div.classList.add('wrong');
+            }
+        }
+        container.appendChild(div);
+    });
+    
+    updateStats();
+    
+    // Show/hide nav buttons
+    const answered = state.answers[state.currentQ]?.checked;
+    document.getElementById('navButtons').classList.toggle('hidden',!answered);
+    
+    // Start timer if not answered
+    if (!answered) {
+        state.timeLeft = 30;
+        updateTimer();
+        state.timer = setInterval(() => {
+            state.timeLeft--;
+            updateTimer();
+            if (state.timeLeft <= 0) {
+                clearInterval(state.timer);
+                timeUp();
+            }
+        }, 1000);
+    }
+}
+
+function updateTimer() {
+    document.getElementById('timer').textContent = state.timeLeft;
+}
+
+function selectOption(idx) {
+    if (state.answers[state.currentQ]?.checked) return;
+    
+    clearInterval(state.timer);
+    const q = state.questions[state.currentQ];
+    const isCorrect = idx === q.answer;
+    
+    state.answers[state.currentQ] = {
+        selected: idx,
+        correct: isCorrect,
+        checked: true,
+        skipped: false
+    };
+    
+    saveState();
+    loadQuestion(); // Reload to show correct/wrong colors
+    
+    // Add tick/cross
+    const options = document.querySelectorAll('.option');
+    options[idx].innerHTML += isCorrect? ' ✓' : ' ×';
+    if (!isCorrect) options[q.answer].innerHTML += ' ✓';
+}
+
+function timeUp() {
+    if (!state.answers[state.currentQ]) {
+        state.answers[state.currentQ] = { selected: -1, correct: false, checked: true, skipped: true };
+        saveState();
+        loadQuestion();
+    }
+}
+
+function updateStats() {
+    let correct = 0, wrong = 0, skip = 0;
+    Object.values(state.answers).forEach(a => {
+        if (a.skipped) skip++;
+        else if (a.correct) correct++;
+        else wrong++;
+    });
+    document.getElementById('correctCount').textContent = correct;
+    document.getElementById('wrongCount').textContent = wrong;
+    document.getElementById('skipCount').textContent = skip;
+}
+
+window.nextQuestion = () => {
+    if (state.currentQ < state.questions.length - 1) {
+        state.currentQ++;
+        saveState();
+        loadQuestion();
+    } else {
+        finishQuiz();
+    }
+}
+
+window.prevQuestion = () => {
+    if (state.currentQ > 0) {
+        state.currentQ--;
+        saveState();
+        loadQuestion();
+    }
+}
+
+window.backToInstructions = () => {
+    clearInterval(state.timer);
+    saveState();
+    document.getElementById('quizPage').classList.add('hidden');
+    document.getElementById('instructionPage').classList.remove('hidden');
+}
+
+async function finishQuiz() {
+    clearInterval(state.timer);
+    const score = calculateScore();
+    const data = {
+        userId: state.userId,
+        score: score.total,
+        correct: score.correct,
+        wrong: score.wrong,
+        skipped: score.skipped,
+        answers: state.answers,
+        completed: true,
+        timestamp: Date.now()
+    };
+    
+    localStorage.setItem('quizApp', JSON.stringify(data));
+    
+    // Save to Firebase
+    try {
+        await addDoc(collection(db, "scores"), data);
+    } catch (e) {
+        console.log('Firebase save failed:', e);
+    }
+    
+    showScorePage(data);
+}
+
+function calculateScore() {
+    let correct = 0, wrong = 0, skipped = 0;
+    Object.values(state.answers).forEach(a => {
+        if (a.skipped) skipped++;
+        else if (a.correct) correct++;
+        else wrong++;
+    });
+    return {
+        correct, wrong, skipped,
+        total: correct * 2 - wrong * 0.5
+    };
+}
+
+async function showScorePage(data) {
+    document.getElementById('quizPage').classList.add('hidden');
+    document.getElementById('instructionPage').classList.add('hidden');
+    document.getElementById('scorePage').classList.remove('hidden');
+    
+    const score = data.score || calculateScore().total;
+    document.getElementById('finalScore').textContent = score.toFixed(1);
+    document.getElementById('finalCorrect').textContent = data.correct || 0;
+    document.getElementById('finalWrong').textContent = data.wrong || 0;
+    document.getElementById('finalSkip').textContent = data.skipped || 0;
+    
+    // Calculate rank from Firebase
+    try {
+        const q = query(collection(db, "scores"), orderBy("score", "desc"));
+        const snapshot = await getDocs(q);
+        const scores = [];
+        snapshot.forEach(doc => scores.push(doc.data().score));
+        const totalUsers = scores.length;
+const rank = scores.filter(s => s > score).length + 1;
+const percentile = ((totalUsers - rank + 1) / totalUsers * 100).toFixed(1);
+document.getElementById('userRank').textContent = rank;
+document.getElementById('totalUsers').textContent = totalUsers;
+document.getElementById('percentile').textContent = percentile;
+    } catch (e) {
+        document.getElementById('userRank').textContent = '-';
+        document.getElementById('percentile').textContent = '-';
+    }
+    
+    state.answers = data.answers || {};
+    state.questions = QUESTIONS;
+    filterQuestions('all');
+}
+
+window.filterQuestions = (type) => {
+    document.querySelectorAll('.filter-tabs button').forEach(b => b.classList.remove('active'));
+    event.target.classList.add('active');
+    
+    const container = document.getElementById('reviewContainer');
+    container.innerHTML = '';
+    
+    state.questions.forEach((q, idx) => {
+        const ans = state.answers[idx];
+        if (!ans) return;
+        
+        let show = false;
+        if (type === 'all') show = true;
+        else if (type === 'correct' && ans.correct) show = true;
+        else if (type === 'wrong' &&!ans.correct &&!ans.skipped) show = true;
+        else if (type === 'skip' && ans.skipped) show = true;
+        
+        if (!show) return;
+        
+        const div = document.createElement('div');
+        div.className = 'question-review';
+        const userAns = ans.skipped? 'Skipped' : q.options_en[ans.selected];
+        const correctAns = q.options_en[q.answer];
+        
+        div.innerHTML = `
+            <strong>Q${idx + 1}. ${q.q_en}</strong><br><br>
+            <span style="color: ${ans.correct? '#3fb950' : '#f85149'}">
+                Your Answer: ${userAns} ${ans.correct? '✓' : ans.skipped? '' : '×'}
+            </span><br>
+            <span style="color: #3fb950">Correct Answer: ${correctAns} ✓</span><br><br>
+            <em>${q.explanation}</em>
+        `;
+        container.appendChild(div);
+    });
+}
+
+window.showReattemptModal = () => {
+    document.getElementById('reattemptModal').classList.remove('hidden');
+}
+
+window.closeModal = () => {
+    document.getElementById('reattemptModal').classList.add('hidden');
+}
+
+window.confirmReattempt = () => {
+    localStorage.removeItem('quizApp');
+    location.reload();
+}
+
+function saveState() {
+    const data = {
+        questions: state.questions,
+        currentQ: state.currentQ,
+        answers: state.answers,
+        lang: state.lang,
+        userId: state.userId,
+        downloaded: true
+    };
+    localStorage.setItem('quizApp', JSON.stringify(data));
+}
+
+window.goBack = () => {
+    if (confirm('Go back? Progress will be saved.')) {
+        history.back();
+    }
+}
+
+// Handle browser back button
+window.addEventListener('beforeunload', () => {
+    if (!document.getElementById('quizPage').classList.contains('hidden')) {
+        saveState();
+    }
+});
+</script>
+</body>
+</html>
