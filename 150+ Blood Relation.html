@@ -5,6 +5,30 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Marathon Test</title>
 <style>
+
+
+
+
+
+
+.loader-circle{
+    width:70px;
+    height:70px;
+    margin:auto;
+    border:6px solid #30363d;
+    border-top:6px solid #1f6feb;
+    border-radius:50%;
+    animation:spin 1s linear infinite;
+}
+
+@keyframes spin{
+    from{transform:rotate(0deg);}
+    to{transform:rotate(360deg);}
+}
+
+
+
+    
 :root {
     --bg: #0d1117; --card: #161b22; --border: #30363d; --text: #e6edf3; 
     --green: #238636; --red: #da3633; --blue: #1f6feb; --yellow: #d29922;
@@ -119,7 +143,7 @@ select, input {
 
         <div class="flex hidden" id="navButtons">
             <button class="btn-secondary" onclick="prevQuestion()">Previous</button>
-            <button class="btn-success" onclick="nextQuestion()">Next</button>
+           <button class="btn-success" id="nextBtn" onclick="nextQuestion()">Next</button>
         </div>
     </div>
 
@@ -257,25 +281,41 @@ function showInstructionPage() {
     if (saved.lang) document.getElementById('language').value = saved.lang;
 }
 
-window.startQuiz = () => {
+window.startQuiz = async () => {
     const lang = document.getElementById('language').value;
     const userId = document.getElementById('userId').value.trim();
+    const saved = JSON.parse(localStorage.getItem("quizApp") || "{}");
     
     if (!lang) {
-        showCustomModal('Warning', 'Please select a language.');
-        return;
-    }
-    if (!userId) {
-        showCustomModal('Warning', 'Please enter your ID/Name.');
-        return;
-    }
+    await customAlert("Please select language");
+    return;
+}
+
+if (!userId) {
+    await customAlert("Please enter your ID/Name");
+    return;
+}
     
     state.lang = lang;
-    state.userId = userId;
+state.userId = userId;
+
+if (saved.questions && saved.questions.length > 0) {
+
+    // Resume previous quiz
+    state.questions = saved.questions;
+    state.currentQ = saved.currentQ || 0;
+    state.answers = saved.answers || {};
+
+} else {
+
+    // Start a new quiz
     state.questions = [...QUESTIONS].sort(() => Math.random() - 0.5);
     state.currentQ = 0;
     state.answers = {};
-    state.startTime = Date.now();
+
+}
+
+state.startTime = Date.now();
     
     document.title = userId; // Page title = ID for rank calculation
     saveState();
@@ -329,6 +369,15 @@ function loadQuestion() {
     // Show/hide nav buttons
     const answered = state.answers[state.currentQ]?.checked;
     document.getElementById('navButtons').classList.toggle('hidden',!answered);
+
+
+    const nextBtn = document.getElementById("nextBtn");
+
+if (state.currentQ === state.questions.length - 1) {
+    nextBtn.textContent = "Submit";
+} else {
+    nextBtn.textContent = "Next";
+}
     
     // Start timer if not answered
     if (!answered) {
@@ -419,6 +468,7 @@ window.backToInstructions = () => {
 
 async function finishQuiz() {
     clearInterval(state.timer);
+    document.getElementById("submitLoader").classList.remove("hidden");
     const score = calculateScore();
     const data = {
         userId: state.userId,
@@ -440,7 +490,13 @@ async function finishQuiz() {
         console.log('Firebase save failed:', e);
     }
     
-    showScorePage(data);
+    setTimeout(async ()=>{
+
+    document.getElementById("submitLoader").classList.add("hidden");
+
+    await showScorePage(data);
+
+},1000);
 }
 
 function calculateScore() {
@@ -460,28 +516,66 @@ function calculateScore() {
 
 
 
-function showCustomModal(title, message, callback) {
-    document.getElementById('modalTitle').textContent = title;
-    document.getElementById('modalMessage').textContent = message;
-    const modal = document.getElementById('customModal');
-    modal.classList.remove('hidden');
-    
-    // If you need a callback (like 'Confirm' action), you can extend this
-    window.currentModalCallback = callback; 
+
+
+
+
+
+
+function customAlert(msg){
+
+    return new Promise(resolve=>{
+
+        popupTitle.innerHTML="Message";
+        popupMessage.innerHTML=msg;
+
+        popupCancel.style.display="none";
+
+        customPopup.classList.remove("hidden");
+
+        popupOk.onclick=()=>{
+
+            customPopup.classList.add("hidden");
+
+            popupCancel.style.display="block";
+
+            resolve();
+
+        };
+
+    });
+
 }
 
-function closeCustomModal() {
-    document.getElementById('customModal').classList.add('hidden');
-    if (window.currentModalCallback) window.currentModalCallback();
+function customConfirm(msg){
+
+    return new Promise(resolve=>{
+
+        popupTitle.innerHTML="Confirmation";
+
+        popupMessage.innerHTML=msg;
+
+        customPopup.classList.remove("hidden");
+
+        popupOk.onclick=()=>{
+
+            customPopup.classList.add("hidden");
+
+            resolve(true);
+
+        };
+
+        popupCancel.onclick=()=>{
+
+            customPopup.classList.add("hidden");
+
+            resolve(false);
+
+        };
+
+    });
+
 }
-
-
-
-
-
-
-
-
 
 
 
@@ -522,7 +616,7 @@ document.getElementById('percentile').textContent = percentile;
     }
     
     state.answers = data.answers || {};
-    state.questions = QUESTIONS;
+    state.questions = data.questions || state.questions;
     filterQuestions('all');
 }
 
@@ -587,11 +681,14 @@ function saveState() {
     localStorage.setItem('quizApp', JSON.stringify(data));
 }
 
-window.goBack = () => {
-    // You can customize the message here
-    showCustomModal('Notice', 'Progress is saved automatically. Going back now.');
-    // Logic to redirect
-    setTimeout(() => { history.back(); }, 1500);
+window.goBack = async () => {
+
+    if (await customConfirm("Go back? Progress will be saved.")) {
+
+        history.back();
+
+    }
+
 }
 
 // Handle browser back button
@@ -606,16 +703,25 @@ window.addEventListener('beforeunload', () => {
 
 
 
-
-
-
-
-
-<div id="customModal" class="modal hidden">
+<div id="customPopup" class="modal hidden">
     <div class="modal-content">
-        <h3 id="modalTitle">Alert</h3>
-        <p id="modalMessage">Message goes here.</p>
-        <button class="btn-secondary" onclick="closeCustomModal()">OK</button>
+
+        <h3 id="popupTitle"></h3>
+
+        <p id="popupMessage"></p>
+
+        <div class="flex">
+
+            <button id="popupCancel" class="btn-secondary">
+                Cancel
+            </button>
+
+            <button id="popupOk" class="btn-success">
+                OK
+            </button>
+
+        </div>
+
     </div>
 </div>
 
@@ -623,6 +729,15 @@ window.addEventListener('beforeunload', () => {
 
 
 
+    
+<div id="submitLoader" class="modal hidden">
+    <div class="modal-content" style="text-align:center;">
+        <div class="loader-circle"></div>
+        <br>
+        <h3>Submitting Test...</h3>
+        <p>Please wait...</p>
+    </div>
+</div>
     
 </body>
 </html>
