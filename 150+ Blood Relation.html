@@ -261,8 +261,14 @@ window.startQuiz = () => {
     const lang = document.getElementById('language').value;
     const userId = document.getElementById('userId').value.trim();
     
-    if (!lang) return alert('Please select language');
-    if (!userId) return alert('Please enter your ID/Name');
+    if (!lang) {
+        showCustomModal('Warning', 'Please select a language.');
+        return;
+    }
+    if (!userId) {
+        showCustomModal('Warning', 'Please enter your ID/Name.');
+        return;
+    }
     
     state.lang = lang;
     state.userId = userId;
@@ -450,6 +456,43 @@ function calculateScore() {
     };
 }
 
+
+
+
+
+function showCustomModal(title, message, callback) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    const modal = document.getElementById('customModal');
+    modal.classList.remove('hidden');
+    
+    // If you need a callback (like 'Confirm' action), you can extend this
+    window.currentModalCallback = callback; 
+}
+
+function closeCustomModal() {
+    document.getElementById('customModal').classList.add('hidden');
+    if (window.currentModalCallback) window.currentModalCallback();
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
 async function showScorePage(data) {
     document.getElementById('quizPage').classList.add('hidden');
     document.getElementById('instructionPage').classList.add('hidden');
@@ -545,9 +588,10 @@ function saveState() {
 }
 
 window.goBack = () => {
-    if (confirm('Go back? Progress will be saved.')) {
-        history.back();
-    }
+    // You can customize the message here
+    showCustomModal('Notice', 'Progress is saved automatically. Going back now.');
+    // Logic to redirect
+    setTimeout(() => { history.back(); }, 1500);
 }
 
 // Handle browser back button
@@ -557,5 +601,28 @@ window.addEventListener('beforeunload', () => {
     }
 });
 </script>
+
+
+
+
+
+
+
+
+
+
+<div id="customModal" class="modal hidden">
+    <div class="modal-content">
+        <h3 id="modalTitle">Alert</h3>
+        <p id="modalMessage">Message goes here.</p>
+        <button class="btn-secondary" onclick="closeCustomModal()">OK</button>
+    </div>
+</div>
+
+
+
+
+
+    
 </body>
 </html>
