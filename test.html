@@ -284,6 +284,7 @@ function showInstructionPage() {
 window.startQuiz = async () => {
     const lang = document.getElementById('language').value;
     const userId = document.getElementById('userId').value.trim();
+    const saved = JSON.parse(localStorage.getItem("quizApp") || "{}");
     
     if (!lang) {
     await customAlert("Please select language");
@@ -296,11 +297,25 @@ if (!userId) {
 }
     
     state.lang = lang;
-    state.userId = userId;
+state.userId = userId;
+
+if (saved.questions && saved.questions.length > 0) {
+
+    // Resume previous quiz
+    state.questions = saved.questions;
+    state.currentQ = saved.currentQ || 0;
+    state.answers = saved.answers || {};
+
+} else {
+
+    // Start a new quiz
     state.questions = [...QUESTIONS].sort(() => Math.random() - 0.5);
     state.currentQ = 0;
     state.answers = {};
-    state.startTime = Date.now();
+
+}
+
+state.startTime = Date.now();
     
     document.title = userId; // Page title = ID for rank calculation
     saveState();
@@ -601,7 +616,7 @@ document.getElementById('percentile').textContent = percentile;
     }
     
     state.answers = data.answers || {};
-    state.questions = QUESTIONS;
+    state.questions = data.questions || state.questions;
     filterQuestions('all');
 }
 
@@ -666,10 +681,14 @@ function saveState() {
     localStorage.setItem('quizApp', JSON.stringify(data));
 }
 
-window.goBack = () => {
-    if (confirm('Go back? Progress will be saved.')) {
+window.goBack = async () => {
+
+    if (await customConfirm("Go back? Progress will be saved.")) {
+
         history.back();
+
     }
+
 }
 
 // Handle browser back button
